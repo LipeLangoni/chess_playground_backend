@@ -5,11 +5,6 @@ class engine():
   def __init__(self, board, ply):
     self.board = board
     self.ply = ply
-  
-  def convert(self,number,p):
-    decimal = pow(10,p)
-    return number / decimal
-    
 
   def Piece_Square_Table(self, color):
     pawntable = [
@@ -71,59 +66,30 @@ class engine():
         -30, -40, -40, -50, -50, -40, -40, -30,
         -30, -40, -40, -50, -50, -40, -40, -30,
         -30, -40, -40, -50, -50, -40, -40, -30]
+    
+
+    pecas = {chess.PAWN:pawntable, chess.ROOK:rookstable, chess.BISHOP:bishopstable,chess.KNIGHT:knightstable, chess.QUEEN:queenstable, chess.KING:kingstable}
+    pecas_indx = {chess.PAWN:0, chess.ROOK:1, chess.BISHOP:2,chess.KNIGHT:3, chess.QUEEN:4, chess.KING:5}
+    pecas_w = [0,0,0,0,0,0]
+    pecas_b = [0,0,0,0,0,0]
+
+    for peca in pecas:
+       for i in self.board.pieces(peca, color):
+          pecas_w[pecas_indx[peca]] += pecas[peca][i]
       
-    pawntable = [self.convert(i,2) for i in pawntable]
-    knightstable = [self.convert(i,2) for i in knightstable]
-    bishopstable = [self.convert(i,2) for i in bishopstable]
-    rookstable = [self.convert(i,2) for i in rookstable]
-    queenstable = [self.convert(i,2) for i in queenstable]
-    kingstable = [self.convert(i,2) for i in kingstable]
-    pawn = 0
-    knight = 0
-    rook = 0
-    queen = 0
-    king = 0
-    bishop = 0
+    for peca in pecas:
+       for i in self.board.pieces(peca, not color):
+          pecas_b[pecas_indx[peca]] += pecas[peca][chess.square_mirror(i)]
 
-    pawnO = 0
-    knightO = 0
-    rookO = 0
-    queenO = 0
-    kingO = 0
-    bishopO = 0
-
-    for i in self.board.pieces(chess.PAWN, color):
-      pawn+= pawntable[i]
-    for i in self.board.pieces(chess.KNIGHT, color):
-      knight+= pawntable[i]
-    for i in self.board.pieces(chess.ROOK, color):
-      rook+= pawntable[i]
-    for i in self.board.pieces(chess.QUEEN, color):
-      queen+= pawntable[i]
-    for i in self.board.pieces(chess.KING, color):
-      king+= pawntable[i]
-    for i in self.board.pieces(chess.BISHOP, color):
-      bishop+= pawntable[i]
-    for i in self.board.pieces(chess.PAWN, not color):
-      pawnO-= pawntable[chess.square_mirror(i)]
-    for i in self.board.pieces(chess.KNIGHT, not color):
-      knightO-= pawntable[chess.square_mirror(i)]
-    for i in self.board.pieces(chess.ROOK, not color):
-      rookO-= pawntable[chess.square_mirror(i)]
-    for i in self.board.pieces(chess.QUEEN, not color):
-      queenO-= pawntable[chess.square_mirror(i)]
-    for i in self.board.pieces(chess.KING, not color):
-      kingO-= pawntable[chess.square_mirror(i)]
-    for i in self.board.pieces(chess.BISHOP, not color):
-      bishopO-= pawntable[chess.square_mirror(i)]
-
-    score = (pawn + pawnO) + (knight + knightO) + (rook + rookO) + (queen + queenO) + (king + kingO) + (bishop + bishopO)
+    score = sum([i + b for i,b in zip(pecas_w,pecas_b)])
 
     return score
   
   def avaliacao(self,cor):
     score = 0
-    pecas = {chess.PAWN:1, chess.ROOK:5, chess.BISHOP:3.15,chess.KNIGHT:3, chess.QUEEN:10}
+    pecas = {chess.PAWN:100, chess.ROOK:500, 
+    chess.BISHOP:300.15,chess.KNIGHT:300, 
+    chess.QUEEN:1000}
 
     for peca, valor in pecas.items():
       score += len(self.board.pieces(peca,cor)) * valor
@@ -146,10 +112,10 @@ class engine():
           return 0
     return score
   
+
   def negamax(self, alpha, beta, ply):
     if ply == 0:
       return self.avaliacao(self.board.turn)
-    
     score = 0
     best_value = -1000
 
@@ -167,34 +133,51 @@ class engine():
       alpha = max(score, alpha)
 
     return best_value
+  
+  def quisce(self,alpha,beta,ply):
+    if ply == 0:
+      return self.avaliacao(self.board.turn)
+    
+    stand_pat = self.avaliacao(self.board.turn)
+    if stand_pat >= beta:
+      return beta
+    
+    delta = 1000
+
+    if alpha < stand_pat:
+      alpha = stand_pat
+    
+    for move in list(self.board.legal_moves):
+      if self.board.is_capture(move):
+        self.board.push(move)
+        score = -self.quisce(-beta, -alpha, ply-1)
+        self.board.pop()
+
+        if move.promotion:
+            delta+=750
+        if stand_pat < alpha-delta:
+            return alpha
+        if score >= beta:
+            return beta
+        if score > alpha:
+            alpha = score
+    return alpha
+
+          
+      
+     
 
 
   def movement(self, ply):
-
-    queens_gambit = ["d2d4","c1f4","e2e3","f1c4","b1c3","g1f3","e1g1"]
-    ruy_lopes = ["e2e4","b1c3","d2d3","c1f4","","g1f3","f1b5", "d1d2","e1c1"]
-    speed_dragon = ["c7c5","g7g6","f8g7","d7d6","g8f6","e8g8","c8d6","b7b6","c8b7","b8c6"]
-    counter_d4 = ["d7d5","e7e6","g8f6","c7c5","b8c6","f8e7","e8g8","b7b6","c8b7"]
-
-    white = [queens_gambit, ruy_lopes]
-    black = [speed_dragon,counter_d4]
-    lm = list(self.board.legal_moves)
-
-    if self.board.turn == True:
-        oppening = random.choice(white)
-    else:
-        oppening = speed_dragon
-
     best_move = None
     best_value = -1000
 
     alpha = -1000
     beta = 1000
 
-    if self.board.turn == True:
-        oppening = random.choice(white)
-    else:
-        oppening = random.choice(black)
+    
+    oppening = ["g7g6","f8g7","g8f6","e8g8","d7d6","c8g4","b8c6","c7c5"]
+    oppening_super = ["g7g6","f8g7","g8f6","e8g8"]
 
     for move in list(self.board.legal_moves):
       self.board.push(move)
@@ -202,11 +185,10 @@ class engine():
       self.board.pop()
 
       if str(move) in oppening:
-            score+=0.5
-            
-      if str(move) in oppening:
-            score+=0.5
-
+         score += 150
+      if move in oppening_super:
+         score +=200
+      
       if best_move == None:
           best_move = move
       if best_value < score:

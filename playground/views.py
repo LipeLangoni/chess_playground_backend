@@ -9,8 +9,8 @@ board = chess.Board()
 def make_move(request):
     move = request.data.get('uci_move')
     board.push_san(move)
-    engine = p1.engine(board,2)
-    engine_move = engine.movement(2)
+    engine = p1.engine(board,4)
+    engine_move = engine.movement(4)
 
     if engine_move is not None:
         board.push(engine_move)
